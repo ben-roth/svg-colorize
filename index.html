@@ -153,7 +153,12 @@
     });
 
     function applyNewColor(newColor) {
-      if (!svgEl || !currentColor) return;
+      if (!svgEl || !currentColor) {
+        console.log('SVG element or current color is missing.');
+        return;
+      }
+
+      console.log('Applying new color:', newColor);
 
       const els = svgEl.querySelectorAll(`[fill="${currentColor}"]`);
       els.forEach(el => el.setAttribute('fill', newColor));
@@ -166,8 +171,11 @@
 
       currentColor = newColor;
       colorInput.value = newColor;
+
+      console.log('Displaying save button.');
       saveBtn.style.display = 'inline-block';
     }
+    
 
     saveBtn.addEventListener('click', () => {
       const serializer = new XMLSerializer();
