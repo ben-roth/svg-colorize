@@ -54,6 +54,7 @@
       <h3 class="mb-3">Drag and drop an SVG file here</h3>
       <p class="text-muted">Or click to upload</p>
     </div>
+    <input type="file" id="file-input" accept=".svg" class="d-none" />
 
     <div id="palette" class="d-flex flex-wrap gap-2 mt-4"></div>
 
@@ -99,6 +100,22 @@
       }
     });
 
+    const fileInput = document.getElementById('file-input');
+
+    // Let user click the dropzone to upload manually
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (file && file.type === 'image/svg+xml') {
+        const reader = new FileReader();
+        reader.onload = (e) => loadSVG(e.target.result);
+        reader.readAsText(file);
+    } else {
+        alert('Please select a valid SVG file.');
+    }
+    });
+
     function loadSVG(svgText) {
       svgContainer.innerHTML = svgText;
       svgEl = svgContainer.querySelector('svg');
@@ -107,6 +124,7 @@
         return;
       }
 
+      saveBtn.classList.add('d-none');
       palette.innerHTML = '';
       colorInput.style.display = 'none';
       originalColors.clear();
@@ -154,11 +172,8 @@
 
     function applyNewColor(newColor) {
       if (!svgEl || !currentColor) {
-        console.log('SVG element or current color is missing.');
         return;
       }
-
-      console.log('Applying new color:', newColor);
 
       const els = svgEl.querySelectorAll(`[fill="${currentColor}"]`);
       els.forEach(el => el.setAttribute('fill', newColor));
@@ -172,10 +187,9 @@
       currentColor = newColor;
       colorInput.value = newColor;
 
-      console.log('Displaying save button.');
-      saveBtn.style.display = 'inline-block';
+      saveBtn.classList.remove('d-none');
     }
-    
+
 
     saveBtn.addEventListener('click', () => {
       const serializer = new XMLSerializer();
