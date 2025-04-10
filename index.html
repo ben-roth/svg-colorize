@@ -127,7 +127,6 @@
       palette.innerHTML = '';
       colorInput.style.display = 'none';
       originalColors.clear();
-      saveBtn.style.display = 'none';
 
       const elements = svgEl.querySelectorAll('[fill]');
       elements.forEach(el => {
@@ -185,7 +184,7 @@
 
       currentColor = newColor;
       colorInput.value = newColor;
-
+      console.log('new color')
       saveBtn.classList.remove('d-none');
     }
 
