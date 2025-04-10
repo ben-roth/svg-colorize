@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SVG Color Editor</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    #dropzone {
+      border: 2px dashed #ccc;
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+    #palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .color-box {
+      width: 40px;
+      height: 40px;
+      border: 1px solid #333;
+      cursor: pointer;
+    }
+    .color-box:hover {
+      transform: scale(1.1);
+      transition: transform 0.2s ease-in-out;
+    }
+    #svg-container {
+      border: 1px solid #aaa;
+      padding: 10px;
+      margin-top: 20px;
+    }
+    #save-btn {
+      display: none;
+      margin-top: 20px;
+    }
+    #color-input {
+      margin-top: 10px;
+      padding: 5px;
+      font-size: 14px;
+      width: 200px;
+      display: none;
+    }
+  </style>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body class="bg-light text-dark">
+  <div class="container py-4">
+    <div id="dropzone" class="border border-secondary rounded p-5 text-center bg-white">
+      <h3 class="mb-3">Drag and drop an SVG file here</h3>
+      <p class="text-muted">Or click to upload</p>
+    </div>
+
+    <div id="palette" class="d-flex flex-wrap gap-2 mt-4"></div>
+
+    <input type="color" id="color-picker" class="form-control d-none" />
+    <input id="color-input" class="form-control mt-3" placeholder="#rrggbb or rgb/rgba()" />
+
+    <div id="svg-container" class="border border-secondary rounded p-3 mt-4 bg-white"></div>
+
+    <button id="save-btn" class="btn btn-primary mt-3 d-none">Save SVG</button>
+  </div>
+
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const svgContainer = document.getElementById('svg-container');
+    const palette = document.getElementById('palette');
+    const colorPicker = document.getElementById('color-picker');
+    const colorInput = document.getElementById('color-input');
+    const saveBtn = document.getElementById('save-btn');
+
+    let svgEl, currentColor, originalColors = new Set();
+
+    dropzone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropzone.style.borderColor = 'green';
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.style.borderColor = '#ccc';
+    });
+
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.style.borderColor = '#ccc';
+      const file = e.dataTransfer.files[0];
+      if (file && file.type === 'image/svg+xml') {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          loadSVG(evt.target.result);
+        };
+        reader.readAsText(file);
+      } else {
+        alert('Please drop a valid SVG file.');
+      }
+    });
+
+    function loadSVG(svgText) {
+      svgContainer.innerHTML = svgText;
+      svgEl = svgContainer.querySelector('svg');
+      if (!svgEl) {
+        alert('Invalid SVG content.');
+        return;
+      }
+
+      palette.innerHTML = '';
+      colorInput.style.display = 'none';
+      originalColors.clear();
+      saveBtn.style.display = 'none';
+
+      const elements = svgEl.querySelectorAll('[fill]');
+      elements.forEach(el => {
+        const fill = el.getAttribute('fill');
+        if (fill && fill !== 'none' && !fill.startsWith('url')) {
+          originalColors.add(fill);
+        }
+      });
+
+      originalColors.forEach(color => {
+        const box = document.createElement('div');
+        box.className = 'color-box';
+        box.style.backgroundColor = color;
+        box.dataset.color = color;
+        box.addEventListener('click', () => {
+          currentColor = box.dataset.color;
+          const hex = toHex(currentColor);
+          colorPicker.value = hex;
+          colorInput.value = currentColor;
+          colorInput.style.display = 'block';
+          colorPicker.click();
+        });
+        palette.appendChild(box);
+      });
+    }
+
+    colorPicker.addEventListener('input', e => {
+      const newColor = e.target.value;
+      applyNewColor(newColor);
+      colorInput.value = newColor;
+    });
+
+    colorInput.addEventListener('change', () => {
+      const newColor = colorInput.value.trim();
+      if (isValidCSSColor(newColor)) {
+        applyNewColor(newColor);
+      } else {
+        alert('Invalid color format. Try hex (#rrggbb), rgb(), or rgba().');
+      }
+    });
+
+    function applyNewColor(newColor) {
+      if (!svgEl || !currentColor) return;
+
+      const els = svgEl.querySelectorAll(`[fill="${currentColor}"]`);
+      els.forEach(el => el.setAttribute('fill', newColor));
+
+      const box = [...palette.children].find(b => b.dataset.color === currentColor);
+      if (box) {
+        box.style.backgroundColor = newColor;
+        box.dataset.color = newColor;
+      }
+
+      currentColor = newColor;
+      colorInput.value = newColor;
+      saveBtn.style.display = 'inline-block';
+    }
+
+    saveBtn.addEventListener('click', () => {
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svgEl);
+      const blob = new Blob([svgString], { type: 'image/svg+xml' });
+
+      const filename = prompt('Enter filename:', 'edited.svg') || 'edited.svg';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+    });
+
+    function toHex(color) {
+      const ctx = document.createElement('canvas').getContext('2d');
+      ctx.fillStyle = color;
+      return ctx.fillStyle;
+    }
+
+    function isValidCSSColor(color) {
+      const s = new Option().style;
+      s.color = '';
+      s.color = color;
+      return s.color !== '';
+    }
+  </script>
+</body>
+</html>
